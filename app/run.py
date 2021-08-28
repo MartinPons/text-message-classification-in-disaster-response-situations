@@ -7,9 +7,11 @@ from nltk.tokenize import word_tokenize
 
 from flask import Flask
 from flask import render_template, request, jsonify
-from plotly.graph_objs import Bar
-from sklearn.externals import joblib
+from plotly.graph_objs import Bar, Histogram
+import joblib
 from sqlalchemy import create_engine
+
+from sklearn.base import BaseEstimator, TransformerMixin
 
 
 app = Flask(__name__)
@@ -25,12 +27,34 @@ def tokenize(text):
 
     return clean_tokens
 
+
+class TextLength(BaseEstimator, TransformerMixin):
+    
+    def fit(self, X, y = None):
+        return self
+    
+    def transform(self, X):
+
+        return pd.Series(X).apply(lambda x: len(x)).values.reshape(-1, 1)
+    
+
+class ExclamationPoints(BaseEstimator, TransformerMixin):
+    
+    def fit(self, X, y = None):
+        
+        return self
+    
+    def transform(self, X):
+        
+        return pd.Series(X).apply(lambda x: ('!' in x) * 1).values.reshape(-1, 1)
+
+    
 # load data
 engine = create_engine('sqlite:///../data/DisasterResponse.db')
 df = pd.read_sql_table('disaster_messages', engine)
 
 # load model
-model = joblib.load("../models/best_model.pkl")
+model = joblib.load("../models/classifier.pkl")
 
 
 # index webpage displays cool visuals and receives user input text for model
@@ -39,10 +63,26 @@ model = joblib.load("../models/best_model.pkl")
 def index():
     
     # extract data needed for visuals
-    # TODO: Below is an example - modify to extract data for your own visuals
+    
+    # Genres plot data extraction
     genre_counts = df.groupby('genre').count()['message']
     genre_names = list(genre_counts.index)
     
+    # Category plot data extraction
+    categories_df = df.drop(['id', 'message', 'original', 'genre'], axis = 1)
+    cat_n_messages = categories_df.sum().sort_values(ascending = True)
+    
+    # labels extraction and formatting
+    category_names = list(cat_n_messages.index)
+    category_names = list(cat_n_messages.index)
+    category_names = list(map(lambda x: x.replace('_', ' ').upper(), category_names))
+    
+    # values
+    category_counts = cat_n_messages.values
+    
+    # Text length histogram data extraction
+    text_length = list(df.message.apply(lambda x: len(x)).values)
+
     # create visuals
     # TODO: Below is an example - modify to create your own visuals
     graphs = [
@@ -61,6 +101,38 @@ def index():
                 },
                 'xaxis': {
                     'title': "Genre"
+                }
+            }
+        },
+        
+        {
+            'data': [Bar(
+                x = category_counts,
+                y = category_names,
+                orientation = 'h'
+            )
+                    ], 
+            'layout': {
+                'title': 'Distribution of Message Categories',
+                'yaxis': {
+                    'title': "Count"
+                },
+                'xaxis': {
+                    'title': "Genre"
+                }
+            }, 
+                     
+        }, 
+        
+        {
+            'data': [Histogram(
+                x = text_length
+            )
+                    ], 
+            'layout': {
+                'title': 'Distribution of text length (limited to messages from 1 to 600 characters)', 
+                'xaxis': {
+                    'range': [0, 600]
                 }
             }
         }
