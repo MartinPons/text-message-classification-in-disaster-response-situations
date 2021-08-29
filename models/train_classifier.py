@@ -4,7 +4,6 @@ import numpy as np
 import pandas as pd
 from sqlalchemy import create_engine
 import sqlite3
-
 import nltk
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize, sent_tokenize
@@ -12,15 +11,59 @@ from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.multioutput import MultiOutputClassifier
 from sklearn.ensemble import RandomForestClassifier
-
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import classification_report
+from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.pipeline import FeatureUnion
 import pickle
-
 import re
 
 nltk.download('stopwords')
 
+class TextLength(BaseEstimator, TransformerMixin):
+    
+    '''Transformer class to compute the text lenght of every message 
+    in the model pipeline
+    
+    INPUTS
+        - BaseEstimator (fun): provides the stimator with the basic parameters related methods
+        - TrasnformerMixin (fun): adds fit_transform method
+    
+    OUTPUT:
+        - Transformer which computes the text length in the message column
+      
+    ''' 
+
+    def fit(self, X, y = None):
+        return self
+    
+    def transform(self, X):
+
+        return pd.Series(X).apply(lambda x: len(x)).values.reshape(-1, 1)
+    
+
+class ExclamationPoints(BaseEstimator, TransformerMixin):
+
+    '''Transformer class to check if there is at least one exclamation mark in the message
+        
+        INPUTS
+            - BaseEstimator (fun): provides the stimator with the basic parameters related methods
+            - TrasnformerMixin (fun): adds fit_transform method
+    
+        OUTPUT:
+            - Transformer returning a column of zeroes and ones indicating the presence of exclamation points
+    ''' 
+
+    
+    def fit(self, X, y = None):
+        
+        return self
+    
+    def transform(self, X):
+        
+        return pd.Series(X).apply(lambda x: ('!' in x) * 1).values.reshape(-1, 1)
+        
+    
 
 def load_data(database_filepath):
     
@@ -88,8 +131,12 @@ def build_model():
     ''' 
     
     model = Pipeline([
-    ('count', CountVectorizer(tokenizer = tokenize)), 
-    ('tfidf', TfidfTransformer()), 
+    ('features', FeatureUnion([
+        ('text_len', TextLength()),
+        ('exclamation', ExclamationPoints()),
+     ('text_pipeline', Pipeline([
+            ('count', CountVectorizer(tokenizer = tokenize)), 
+            ('tfidf', TfidfTransformer())]))])), 
     ('clf', MultiOutputClassifier(RandomForestClassifier()))])
     
     return model
@@ -146,13 +193,21 @@ def main():
         model = build_model()
         
         print('Training model...')
-        model.fit(X_train.ravel(), Y_train)
+        parameters = {'clf__estimator__max_features': [1, 5, 10], 
+#             'clf__estimator__min_samples_leaf': [1, 5, 10]
+             }
+    
+        cv = GridSearchCV(model, param_grid = parameters, refit = True)
         
+        # extracting best model
+        cv.fit(X_train.ravel(), Y_train)
+        
+    
         print('Evaluating model...')
-        evaluate_model(model, X_test, Y_test, category_names)
+        evaluate_model(cv, X_test, Y_test, category_names)
 
         print('Saving model...\n    MODEL: {}'.format(model_filepath))
-        save_model(model, model_filepath)
+        save_model(cv.best_estimator_, model_filepath)
 
         print('Trained model saved!')
 

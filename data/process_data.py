@@ -1,7 +1,9 @@
 import sys
-import pandas as pd
 import numpy as np
+import pandas as pd
 from sqlalchemy import create_engine
+from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
+
 
 def load_data(messages_filepath, categories_filepath):
     
@@ -24,6 +26,29 @@ def load_data(messages_filepath, categories_filepath):
     df = messages.merge(categories, how = "left", on = "id")
     
     return df
+
+
+def tokenize(text):
+    
+    
+    ''' One word tokenizer from a string
+    
+    INPUTS
+        - text (str): a text string
+    
+    OUTPUT
+        - text_tokenized (str): one word tokenized version of text in list form
+    ''' 
+    
+    # clean text
+    text = re.sub(r"[^a-zA-Z0-9]", " ", text.lower())
+
+    text_tokenized = word_tokenize(text)
+    
+    # remove stop words
+    text_tokenized = [word for word in text_tokenized if word not in stopwords.words('english')]
+    
+    return text_tokenized
 
 
 def clean_data(df):
@@ -61,6 +86,9 @@ def clean_data(df):
     df = df.loc[~duplicates]
     
     return df
+
+
+
 
 def save_data(df, database_filename):
     ''' 

@@ -4,13 +4,11 @@ import pandas as pd
 
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
-
 from flask import Flask
 from flask import render_template, request, jsonify
 from plotly.graph_objs import Bar, Histogram
 import joblib
 from sqlalchemy import create_engine
-
 from sklearn.base import BaseEstimator, TransformerMixin
 
 
@@ -30,6 +28,17 @@ def tokenize(text):
 
 class TextLength(BaseEstimator, TransformerMixin):
     
+    '''Transformer class to compute the text lenght of every message 
+    in the model pipeline
+    
+    INPUTS
+        - BaseEstimator (fun): provides the stimator with the basic parameters related methods
+        - TrasnformerMixin (fun): adds fit_transform method
+    
+    OUTPUT:
+        - Transformer which computes the text length in the message column
+    ''' 
+        
     def fit(self, X, y = None):
         return self
     
@@ -39,6 +48,17 @@ class TextLength(BaseEstimator, TransformerMixin):
     
 
 class ExclamationPoints(BaseEstimator, TransformerMixin):
+    
+    '''Transformer class to check if there is at least one exclamation mark in the message
+        
+        INPUTS
+            - BaseEstimator (fun): provides the stimator with the basic parameters related methods
+            - TrasnformerMixin (fun): adds fit_transform method
+    
+        OUTPUT:
+            - Transformer returning a column of zeroes and ones indicating the presence of exclamation points
+    ''' 
+
     
     def fit(self, X, y = None):
         
@@ -115,14 +135,16 @@ def index():
             'layout': {
                 'title': 'Distribution of Message Categories',
                 'yaxis': {
-                    'title': "Count"
+                    'title': "",
+                    'tickfont': {'size': 8}
                 },
+                'height':600,
+ 
                 'xaxis': {
                     'title': "Genre"
                 }
+                }
             }, 
-                     
-        }, 
         
         {
             'data': [Histogram(
