@@ -51,3 +51,5 @@ A very basic web app was developed to demonstrate the practical utility of the m
 
 **To run the app** go to the app directory and type python run.app.
 
+
+Model repository: https://github.com/MartinPons/text-message-classification-in-disaster-response-situations
