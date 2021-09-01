@@ -139,7 +139,13 @@ def build_model():
             ('tfidf', TfidfTransformer())]))])), 
     ('clf', MultiOutputClassifier(RandomForestClassifier()))])
     
-    return model
+    parameters = {'clf__estimator__max_features': [1, 5, 10], 
+#             'clf__estimator__min_samples_leaf': [1, 5, 10]
+             }
+    
+    cv = GridSearchCV(model, param_grid = parameters)
+    
+    return cv
 
 
 def evaluate_model(model, X_test, Y_test, category_names):
@@ -193,21 +199,14 @@ def main():
         model = build_model()
         
         print('Training model...')
-        parameters = {'clf__estimator__max_features': [1, 5, 10], 
-#             'clf__estimator__min_samples_leaf': [1, 5, 10]
-             }
-    
-        cv = GridSearchCV(model, param_grid = parameters, refit = True)
+        model.fit(X_train.ravel(), Y_train)
+        print(model.best_params_)
         
-        # extracting best model
-        cv.fit(X_train.ravel(), Y_train)
-        
-    
         print('Evaluating model...')
-        evaluate_model(cv, X_test, Y_test, category_names)
+        evaluate_model(model, X_test, Y_test, category_names)
 
         print('Saving model...\n    MODEL: {}'.format(model_filepath))
-        save_model(cv.best_estimator_, model_filepath)
+        save_model(model, model_filepath)
 
         print('Trained model saved!')
 

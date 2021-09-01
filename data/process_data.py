@@ -76,10 +76,15 @@ def clean_data(df):
     for column in categories:
         categories[column] = categories[column].str.slice(start = -1)
         categories[column] = pd.to_numeric(categories[column])
+        
     
     # insert the categories in the main DataFrame
     df.drop("categories", axis = 1, inplace = True)
     df = pd.concat([df, categories], axis = 1)
+    
+    # drop rows with value 2 in related
+    retain_index = df.related < 2
+    df = df.loc[retain_index]
     
     # remove duplicates
     duplicates = df.duplicated()
@@ -101,7 +106,7 @@ def save_data(df, database_filename):
     
     
     engine = create_engine('sqlite:///' + database_filename)
-    df.to_sql('disaster_messages', engine, index=False)  
+    df.to_sql('disaster_messages', engine, index=False, if_exists='replace')  
 
 
 def main():
